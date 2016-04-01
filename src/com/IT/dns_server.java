@@ -113,8 +113,22 @@ public class dns_server {
         int NSCount = (short) (((data[offset] & 0xFF) << 8) | (data[offset + 1] & 0xFF));
         offset += 2;
         int ARCount = (short) (((data[offset] & 0xFF) << 8) | (data[offset + 1] & 0xFF));
+        offset += 2;
 
+        // Extract query name that occurs after 96 bites/12 bytes
+        //byte[] qName = new byte[];
+        while(!(String.format("%02x", data[offset])).equals("00")){
 
+            if ((data[offset] <= ' ') || (data[offset] > '~'))
+                System.out.print(String.format("%02x ", data[offset]));
+            else
+                System.out.print(String.format("%c  ", data[offset]));
+
+            offset++;
+
+        }
+        System.out.println();
+        System.out.println();
 
 
         System.out.println("Received: " + data.length + " bytes: ");
@@ -131,12 +145,12 @@ public class dns_server {
         // look at the bytes as big endian shorts
         // the wrap() method uses an existing byte array for the buffer
 
-        //short[] shorts = new short[data.length/2];
+        short[] shorts = new short[data.length/2];
         //ByteBuffer.wrap(data).order(ByteOrder.BIG_ENDIAN).asShortBuffer().get(shorts);
 
         // dump our buffer as shorts
-        //for (int i=0; i < data.length/2; i++)
-            //System.out.println("short[" + i + "] = " + shorts[i]);
+        for (int i=0; i < data.length/2; i++)
+            System.out.println("short[" + i + "] = " + shorts[i]);
 
         // another way we can create shorts is by manually putting 2 bytes together
         // internet format is big endian - the first byte has the more significant value
