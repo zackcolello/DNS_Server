@@ -116,17 +116,67 @@ public class dns_server {
         offset += 2;
 
         // Extract query name that occurs after 96 bites/12 bytes
-        //byte[] qName = new byte[];
+        String qNameString = "";
         while(!(String.format("%02x", data[offset])).equals("00")){
 
-            if ((data[offset] <= ' ') || (data[offset] > '~'))
-                System.out.print(String.format("%02x ", data[offset]));
-            else
-                System.out.print(String.format("%c  ", data[offset]));
+            // Get length of current word
+            int wordLength = data[offset];
+
+            // If the given length is not the first length, add a '.'
+            if(!qNameString.equals("")){
+                qNameString += ".";
+            }
 
             offset++;
 
+            // Read word given its length in byte array
+            for(int i = 0; i < wordLength; i++){
+                qNameString += (char) data[offset];
+                offset++;
+            }
+
         }
+
+            System.out.println("String is: " + qNameString);
+        String IP = dnsTable.get(qNameString);
+        System.out.println("IP is: " + IP);
+        System.out.println("IP as a byte arr is: ");
+
+        for(byte b : IP.getBytes()){
+            System.out.print(b + " ");
+        }
+
+        // Verify that IP is in the list of host files
+        if(IP == null){
+           return;
+        }
+
+        // Convert IP Address string to 4 byte IP Address: n1.n2.n3.n4
+
+        String n1 = Integer.toBinaryString(Integer.parseInt(IP.substring(0, IP.indexOf('.'))));
+        IP = IP.substring(IP.indexOf('.')+1);
+        String n2 = Integer.toBinaryString(Integer.parseInt(IP.substring(0, IP.indexOf('.'))));
+        IP = IP.substring(IP.indexOf('.')+1);
+        String n3 = Integer.toBinaryString(Integer.parseInt(IP.substring(0, IP.indexOf('.'))));
+        IP = IP.substring(IP.indexOf('.')+1);
+        String n4 = Integer.toBinaryString(Integer.parseInt(IP.substring(0)));
+
+        System.out.println(n1);
+        System.out.println(n2);
+        System.out.println(n3);
+        System.out.println(n4);
+
+        byte b = Byte.parseByte(n1, 2);
+
+        byte b2 = Byte.valueOf(n1, 2);
+
+        /*for(Byte b : qName){
+            if ((b <= ' ') || (b > '~'))
+                System.out.print(String.format("%02x ", b));
+            else
+                System.out.print(String.format("%c  ", b));
+        }*/
+
         System.out.println();
         System.out.println();
 
@@ -145,12 +195,12 @@ public class dns_server {
         // look at the bytes as big endian shorts
         // the wrap() method uses an existing byte array for the buffer
 
-        short[] shorts = new short[data.length/2];
+        //short[] shorts = new short[data.length/2];
         //ByteBuffer.wrap(data).order(ByteOrder.BIG_ENDIAN).asShortBuffer().get(shorts);
 
         // dump our buffer as shorts
-        for (int i=0; i < data.length/2; i++)
-            System.out.println("short[" + i + "] = " + shorts[i]);
+        //for (int i=0; i < data.length/2; i++)
+            //System.out.println("short[" + i + "] = " + shorts[i]);
 
         // another way we can create shorts is by manually putting 2 bytes together
         // internet format is big endian - the first byte has the more significant value
@@ -185,7 +235,18 @@ public class dns_server {
         data[2] = (byte) ((v >> 8) & 0xff);
         data[3] = (byte) (v & 0xff);
 
+    }
 
+    public static byte[] toByteArray(int value) {
+        return new byte[] {
+                (byte)(value >> 56),
+                (byte)(value >> 48),
+                (byte)(value >> 40),
+                (byte)(value >> 32),
+                (byte)(value >> 24),
+                (byte)(value >> 16),
+                (byte)(value >> 8),
+                (byte)value};
     }
 
     private static void createDnsTable(FileInputStream fs) throws IOException{
