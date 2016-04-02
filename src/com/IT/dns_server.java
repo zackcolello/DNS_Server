@@ -51,8 +51,7 @@ public class dns_server {
 
             socket.receive(receivePacket);
 
-            analyzePacket(receivePacket.getData());
-
+            receivePacket.setData(analyzePacket(receivePacket.getData()));
             //InetAddress ip = InetAddress.getByAddress(new byte[] {(byte) 95, (byte) 215, (byte) 62, (byte) 5});
 
            // sentence = new String(receive.getData(), 0, receive.getLength(), "UTF-8");
@@ -73,7 +72,7 @@ public class dns_server {
         socket.close();
     }
 
-    private static void analyzePacket(byte[] data){
+    private static byte[] analyzePacket(byte[] data){
 
         System.out.println("Received: " + data.length + " bytes: ");
         for (int i=0; i < data.length; i++)
@@ -101,7 +100,7 @@ public class dns_server {
         int opcode = (header & 30720) >>> 11;
         int AA = (header & 1024);
         int TC = (header & 512);
-        int RD = (header & 256);
+        int RD = ((header & 256) == 0) ? 0 : 1;
         int RA = (header & 128);
         int rcode = (header & 15);
 
@@ -140,7 +139,6 @@ public class dns_server {
         data[2] = (byte) ((header2 >> 8) & 0xff);
         data[3] = (byte) (header2 & 0xff);
 
-
         // Extract query name that occurs after 96 bites/12 bytes
         String qNameString = "";
         while(!(String.format("%02x", data[offset])).equals("00")){
@@ -167,10 +165,6 @@ public class dns_server {
         String IP = dnsTable.get(qNameString);
 
         //Modify RC flag: 0 for no error, 3 for name error (dm does not exist)
-        header2 =(data[2] & 0xff) << 8 | (data[3] & 0xff);
-        header2 |= (0<<15-8);
-        data[2] = (byte) ((header2 >> 8) & 0xff);
-        data[3] = (byte) (header2 & 0xff);
 
         // Verify that IP is in the list of host files
         if(IP == null){
@@ -228,12 +222,12 @@ public class dns_server {
             offset += 2;
             if (data[offset] != 1) {
                 // Problem with query type
-                return;
+                return null;
             }
             offset += 2;
             if (data[offset] != 1) {
                 // Problem with query class
-                return;
+                return null;
             }
             offset++;
 
@@ -249,10 +243,11 @@ public class dns_server {
 
 
             // Add ttl here
+            data[offset] = (byte) 10;
             offset += 4;
 
             // Add rd length = 4 to response
-            data[offset] = 4;
+            data[offset] = (byte) 4;
             offset++;
 
             // Add IP address to response
@@ -261,17 +256,22 @@ public class dns_server {
                 offset++;
             }
 
+            byte[] returnArr = Arrays.copyOf(data, offset);
+
+            System.out.println("Sending: " + returnArr.length + " bytes: ");
+            for (int i=0; i < returnArr.length; i++)
+                System.out.print(String.format("%02x ", returnArr[i]));
+            System.out.println("");
+            for (int i=0; i < returnArr.length; i++)
+                if ((returnArr[i] <= ' ') || (returnArr[i] > '~'))
+                    System.out.print(String.format("%02x ", returnArr[i]));
+                else
+                    System.out.print(String.format("%c  ", returnArr[i]));
+            System.out.println("");
+
+            return returnArr;
+
         }
-        System.out.println("Sending: " + data.length + " bytes: ");
-        for (int i=0; i < data.length; i++)
-            System.out.print(String.format("%02x ", data[i]));
-        System.out.println("");
-        for (int i=0; i < data.length; i++)
-            if ((data[i] <= ' ') || (data[i] > '~'))
-                System.out.print(String.format("%02x ", data[i]));
-            else
-                System.out.print(String.format("%c  ", data[i]));
-        System.out.println("");
 
         // look at the bytes as big endian shorts
         // the wrap() method uses an existing byte array for the buffer
@@ -316,6 +316,7 @@ public class dns_server {
         data[2] = (byte) ((v >> 8) & 0xff);
         data[3] = (byte) (v & 0xff);
 */
+        return null;
     }
 
 
