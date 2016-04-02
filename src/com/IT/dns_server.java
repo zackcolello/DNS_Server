@@ -75,6 +75,17 @@ public class dns_server {
 
     private static void analyzePacket(byte[] data){
 
+        System.out.println("Received: " + data.length + " bytes: ");
+        for (int i=0; i < data.length; i++)
+            System.out.print(String.format("%02x ", data[i]));
+        System.out.println("");
+        for (int i=0; i < data.length; i++)
+            if ((data[i] <= ' ') || (data[i] > '~'))
+                System.out.print(String.format("%02x ", data[i]));
+            else
+                System.out.print(String.format("%c  ", data[i]));
+        System.out.println("");
+
         int offset = 0;
 
         // Get ID
@@ -105,6 +116,31 @@ public class dns_server {
         int ARCount = (short) (((data[offset] & 0xFF) << 8) | (data[offset + 1] & 0xFF));
         offset += 2;
 
+        //Modify QR flag
+        int header2 =(data[2] & 0xff) << 8 | (data[3] & 0xff);
+        header2 |= (1<<15-0);
+        data[2] = (byte) ((header2 >> 8) & 0xff);
+        data[3] = (byte) (header2 & 0xff);
+
+        //Modify AA flag
+        header2 =(data[2] & 0xff) << 8 | (data[3] & 0xff);
+        header2 |= (1<<15-5);
+        data[2] = (byte) ((header2 >> 8) & 0xff);
+        data[3] = (byte) (header2 & 0xff);
+
+        //Modify TC flag
+        header2 =(data[2] & 0xff) << 8 | (data[3] & 0xff);
+        header2 |= (0<<15-6);
+        data[2] = (byte) ((header2 >> 8) & 0xff);
+        data[3] = (byte) (header2 & 0xff);
+
+        //Modify RA flag
+        header2 =(data[2] & 0xff) << 8 | (data[3] & 0xff);
+        header2 |= (0<<15-8);
+        data[2] = (byte) ((header2 >> 8) & 0xff);
+        data[3] = (byte) (header2 & 0xff);
+
+
         // Extract query name that occurs after 96 bites/12 bytes
         String qNameString = "";
         while(!(String.format("%02x", data[offset])).equals("00")){
@@ -130,53 +166,103 @@ public class dns_server {
         //Find IP address in dns Table
         String IP = dnsTable.get(qNameString);
 
+        //Modify RC flag: 0 for no error, 3 for name error (dm does not exist)
+        header2 =(data[2] & 0xff) << 8 | (data[3] & 0xff);
+        header2 |= (0<<15-8);
+        data[2] = (byte) ((header2 >> 8) & 0xff);
+        data[3] = (byte) (header2 & 0xff);
+
         // Verify that IP is in the list of host files
         if(IP == null){
-           return;
+
+            // If IP not found, modify RCODE with 3
+            header2 |= (0<<15-12);
+            data[2] = (byte) ((header2 >> 8) & 0xff);
+            data[3] = (byte) (header2 & 0xff);
+
+            header2 |= (0<<15-13);
+            data[2] = (byte) ((header2 >> 8) & 0xff);
+            data[3] = (byte) (header2 & 0xff);
+
+            header2 |= (1<<15-14);
+            data[2] = (byte) ((header2 >> 8) & 0xff);
+            data[3] = (byte) (header2 & 0xff);
+
+            header2 |= (1<<15-15);
+            data[2] = (byte) ((header2 >> 8) & 0xff);
+            data[3] = (byte) (header2 & 0xff);
         }
+        else {
+            // If IP not found, modify RCODE with 0
+            header2 |= (0 << 15 - 12);
+            data[2] = (byte) ((header2 >> 8) & 0xff);
+            data[3] = (byte) (header2 & 0xff);
 
-        // Convert IP Address string to 4 byte IP Address: n1.n2.n3.n4
+            header2 |= (0 << 15 - 13);
+            data[2] = (byte) ((header2 >> 8) & 0xff);
+            data[3] = (byte) (header2 & 0xff);
 
-        int n1 = Integer.parseInt(IP.substring(0, IP.indexOf('.')));
-        IP = IP.substring(IP.indexOf('.')+1);
-        int n2 = Integer.parseInt(IP.substring(0, IP.indexOf('.')));
-        IP = IP.substring(IP.indexOf('.')+1);
-        int n3 = Integer.parseInt(IP.substring(0, IP.indexOf('.')));
-        IP = IP.substring(IP.indexOf('.')+1);
-        int n4 = Integer.parseInt(IP.substring(0));
+            header2 |= (0 << 15 - 14);
+            data[2] = (byte) ((header2 >> 8) & 0xff);
+            data[3] = (byte) (header2 & 0xff);
 
-        // Convert String IP to byte array
-        Byte[] ip = {(byte) n1, (byte) n2, (byte) n3, (byte) n4};
+            header2 |= (0 << 15 - 15);
+            data[2] = (byte) ((header2 >> 8) & 0xff);
+            data[3] = (byte) (header2 & 0xff);
 
-        //Check query type and query class
-        offset+=2;
-        if(data[offset] != 1){
-            // Problem with query type
-            return;
-        }
-        offset+=2;
-        if(data[offset] != 1){
-            // Problem with query class
-            return;
-        }
-        offset++;
 
-        // Begin modifying message to append response
+            // Convert IP Address string to 4 byte IP Address: n1.n2.n3.n4
 
-        // Add ttl here
-        offset+=4;
+            int n1 = Integer.parseInt(IP.substring(0, IP.indexOf('.')));
+            IP = IP.substring(IP.indexOf('.') + 1);
+            int n2 = Integer.parseInt(IP.substring(0, IP.indexOf('.')));
+            IP = IP.substring(IP.indexOf('.') + 1);
+            int n3 = Integer.parseInt(IP.substring(0, IP.indexOf('.')));
+            IP = IP.substring(IP.indexOf('.') + 1);
+            int n4 = Integer.parseInt(IP.substring(0));
 
-        // Add rd length = 4 to response
-        data[offset] = 4;
-        offset++;
+            // Convert String IP to byte array
+            Byte[] ip = {(byte) n1, (byte) n2, (byte) n3, (byte) n4};
 
-        // Add IP address to response
-        for(int i = 0; i < 4; i++){
-            data[offset] = ip[i];
+            //Check query type and query class
+            offset += 2;
+            if (data[offset] != 1) {
+                // Problem with query type
+                return;
+            }
+            offset += 2;
+            if (data[offset] != 1) {
+                // Problem with query class
+                return;
+            }
             offset++;
-        }
 
-        System.out.println("Received: " + data.length + " bytes: ");
+            // Begin modifying message to append response
+
+            // Add 1 to Answer Record Count
+
+
+            int ansRecCount = (data[6] & 0xff) << 8 | (data[7] & 0xff);
+            ansRecCount |= (1 << 15 - 15);
+            data[6] = (byte) ((ansRecCount >> 8) & 0xff);
+            data[7] = (byte) (ansRecCount & 0xff);
+
+
+            // Add ttl here
+            offset += 4;
+
+            // Add rd length = 4 to response
+            data[offset] = 4;
+            offset++;
+
+            // Add IP address to response
+            for (int i = 0; i < 4; i++) {
+                data[offset] = ip[i];
+                offset++;
+            }
+
+        }
+        System.out.println("Sending: " + data.length + " bytes: ");
         for (int i=0; i < data.length; i++)
             System.out.print(String.format("%02x ", data[i]));
         System.out.println("");
@@ -210,11 +296,11 @@ public class dns_server {
         // bits are indexed left to right
 
 
-        int v = (data[2] & 0xff) << 8 | (data[3] & 0xff);
+        /*int v = (data[2] & 0xff) << 8 | (data[3] & 0xff);
         for (int i=0; i < 16; i++) {
             System.out.println("bit[" + i + "] = " + (v>>(15-i) & 1));
             // System.out.println("bit[" + i + "] = " + (v & 1<<(15-i)));
-        }
+        }*/
 
         // for example qr, query/response = bit 0
         //boolean qr = ((v >> 15-0) & 1) == 1;
