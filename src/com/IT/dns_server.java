@@ -61,12 +61,12 @@ public class dns_server {
 
             /*socket.receive(receive);
 
-           //byte datagramContent[] = receive.getData();
+           //byte datagramContent[] = receive.getData(); */
 
-            //InetAddress ip = InetAddress.getByAddress(new byte[] {(byte) 95, (byte) 215, (byte) 62, (byte) 5});
+            InetAddress ip = InetAddress.getByAddress(new byte[] {(byte) 95, (byte) 215, (byte) 62, (byte) 5});
 
-            sentence = new String(receive.getData(), 0, receive.getLength(), "UTF-8");
-            length = receive.getLength();*/
+           // sentence = new String(receive.getData(), 0, receive.getLength(), "UTF-8");
+            //length = receive.getLength();
 
             if (sentence != null) {
                 break;
@@ -92,17 +92,17 @@ public class dns_server {
         offset += 2;
 
         // Get all flags from QR (inclusive) to RCode (inclusive)
-        short flags = (short) (((data[offset] & 0xFF) << 8) | (data[offset + 1] & 0xFF));
+        short header = (short) (((data[offset] & 0xFF) << 8) | (data[offset + 1] & 0xFF));
         offset += 2;
 
         //Get query
-        int QR = (flags & (2 << 6));
-        int opcode = (flags & 30720) >>> 11;
-        int AA = (flags & 1024);
-        int TC = (flags & 512);
-        int RD = (flags & 256);
-        int RA = (flags & 128);
-        int rcode = (flags & 15);
+        int QR = (header & (2 << 6));
+        int opcode = (header & 30720) >>> 11;
+        int AA = (header & 1024);
+        int TC = (header & 512);
+        int RD = (header & 256);
+        int RA = (header & 128);
+        int rcode = (header & 15);
 
         // Get counts, move by 2 bytes each
 
@@ -137,7 +137,7 @@ public class dns_server {
 
         }
 
-            System.out.println("String is: " + qNameString);
+        System.out.println("String is: " + qNameString);
         String IP = dnsTable.get(qNameString);
         System.out.println("IP is: " + IP);
         System.out.println("IP as a byte arr is: ");
@@ -153,22 +153,69 @@ public class dns_server {
 
         // Convert IP Address string to 4 byte IP Address: n1.n2.n3.n4
 
-        String n1 = Integer.toBinaryString(Integer.parseInt(IP.substring(0, IP.indexOf('.'))));
+        int n1 = Integer.parseInt(IP.substring(0, IP.indexOf('.')));
         IP = IP.substring(IP.indexOf('.')+1);
-        String n2 = Integer.toBinaryString(Integer.parseInt(IP.substring(0, IP.indexOf('.'))));
+        int n2 = Integer.parseInt(IP.substring(0, IP.indexOf('.')));
         IP = IP.substring(IP.indexOf('.')+1);
-        String n3 = Integer.toBinaryString(Integer.parseInt(IP.substring(0, IP.indexOf('.'))));
+        int n3 = Integer.parseInt(IP.substring(0, IP.indexOf('.')));
         IP = IP.substring(IP.indexOf('.')+1);
-        String n4 = Integer.toBinaryString(Integer.parseInt(IP.substring(0)));
+        int n4 = Integer.parseInt(IP.substring(0));
 
-        System.out.println(n1);
-        System.out.println(n2);
-        System.out.println(n3);
-        System.out.println(n4);
+        // New way to convert IP
+        Byte[] ip = {(byte) n1, (byte) n2, (byte) n3, (byte) n4};
 
-        byte b = Byte.parseByte(n1, 2);
+        System.out.println();
+        for(Byte b : ip){
+            System.out.println((b & 0xFF) + " ");
+        }
 
-        byte b2 = Byte.valueOf(n1, 2);
+
+        /*Prepend zeros onto n1-n4 to have 8 bits each
+        for(int i = n1.length(); i < 8; i++){
+            n1 = "0" + n1;
+        }
+        for(int i = n2.length(); i < 8; i++){
+            n2 = "0" + n2;
+        }
+        for(int i = n3.length(); i < 8; i++){
+            n3 = "0" + n3;
+        }
+        for(int i = n4.length(); i < 8; i++){
+            n4 = "0" + n4;
+        }
+
+        // Create byte array that will represent the IP address
+
+        byte[] byteIP = new byte[4];
+        int bitIndex = 0;
+
+        // Set first byte
+        for(int i = 0; i < 8; i++) {
+            if (n1.charAt(i) == '1') {
+                byteIP[0] |= (1 << i);
+
+            }else{
+                byteIP[0] &= ~(1 << i);
+            }
+        }
+
+
+        // Check bit
+        int[] check = new int[8];
+        for(int i = 0; i < 8; i++){
+            int index = i / 8;  // Get the index of the array for the byte with this bit
+            int bitPosition = i % 8;  // Position of this bit in a byte
+
+            check[i] = (byteIP[0] >> bitPosition & 1);
+        }*/
+
+
+
+        System.out.println("TESTING: ");
+        //System.out.print(String.format("%02x ", byteIP[0]));
+        System.out.println("TESTING: ");
+        //byte b = Byte.parseByte(n1, 2);
+        //byte b2 = Byte.valueOf(n1, 2);
 
         /*for(Byte b : qName){
             if ((b <= ' ') || (b > '~'))
