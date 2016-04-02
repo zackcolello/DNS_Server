@@ -51,26 +51,18 @@ public class dns_server {
 
             socket.receive(receivePacket);
 
-            analyzePacket(receivePacket);
+            analyzePacket(receivePacket.getData());
 
-            String sentence= new String(receivePacket.getData());
-            System.out.println("Received: "+ sentence);
-            InetAddress ipAddress = receivePacket.getAddress();
-            int port = receivePacket.getPort();
-            System.out.println("IP: " + ipAddress);
-
-            /*socket.receive(receive);
-
-           //byte datagramContent[] = receive.getData(); */
-
-            InetAddress ip = InetAddress.getByAddress(new byte[] {(byte) 95, (byte) 215, (byte) 62, (byte) 5});
+            //InetAddress ip = InetAddress.getByAddress(new byte[] {(byte) 95, (byte) 215, (byte) 62, (byte) 5});
 
            // sentence = new String(receive.getData(), 0, receive.getLength(), "UTF-8");
             //length = receive.getLength();
 
-            if (sentence != null) {
+            if (receivePacket.getLength() < 1) {
                 break;
             }
+
+            socket.send(receivePacket);
 
         }
 
@@ -81,9 +73,7 @@ public class dns_server {
         socket.close();
     }
 
-    private static void analyzePacket(DatagramPacket packet){
-
-        byte[] data = packet.getData();
+    private static void analyzePacket(byte[] data){
 
         int offset = 0;
 
@@ -137,14 +127,8 @@ public class dns_server {
 
         }
 
-        System.out.println("String is: " + qNameString);
+        //Find IP address in dns Table
         String IP = dnsTable.get(qNameString);
-        System.out.println("IP is: " + IP);
-        System.out.println("IP as a byte arr is: ");
-
-        for(byte b : IP.getBytes()){
-            System.out.print(b + " ");
-        }
 
         // Verify that IP is in the list of host files
         if(IP == null){
@@ -161,72 +145,36 @@ public class dns_server {
         IP = IP.substring(IP.indexOf('.')+1);
         int n4 = Integer.parseInt(IP.substring(0));
 
-        // New way to convert IP
+        // Convert String IP to byte array
         Byte[] ip = {(byte) n1, (byte) n2, (byte) n3, (byte) n4};
 
-        System.out.println();
-        for(Byte b : ip){
-            System.out.println((b & 0xFF) + " ");
+        //Check query type and query class
+        offset+=2;
+        if(data[offset] != 1){
+            // Problem with query type
+            return;
         }
-
-
-        /*Prepend zeros onto n1-n4 to have 8 bits each
-        for(int i = n1.length(); i < 8; i++){
-            n1 = "0" + n1;
+        offset+=2;
+        if(data[offset] != 1){
+            // Problem with query class
+            return;
         }
-        for(int i = n2.length(); i < 8; i++){
-            n2 = "0" + n2;
+        offset++;
+
+        // Begin modifying message to append response
+
+        // Add ttl here
+        offset+=4;
+
+        // Add rd length = 4 to response
+        data[offset] = 4;
+        offset++;
+
+        // Add IP address to response
+        for(int i = 0; i < 4; i++){
+            data[offset] = ip[i];
+            offset++;
         }
-        for(int i = n3.length(); i < 8; i++){
-            n3 = "0" + n3;
-        }
-        for(int i = n4.length(); i < 8; i++){
-            n4 = "0" + n4;
-        }
-
-        // Create byte array that will represent the IP address
-
-        byte[] byteIP = new byte[4];
-        int bitIndex = 0;
-
-        // Set first byte
-        for(int i = 0; i < 8; i++) {
-            if (n1.charAt(i) == '1') {
-                byteIP[0] |= (1 << i);
-
-            }else{
-                byteIP[0] &= ~(1 << i);
-            }
-        }
-
-
-        // Check bit
-        int[] check = new int[8];
-        for(int i = 0; i < 8; i++){
-            int index = i / 8;  // Get the index of the array for the byte with this bit
-            int bitPosition = i % 8;  // Position of this bit in a byte
-
-            check[i] = (byteIP[0] >> bitPosition & 1);
-        }*/
-
-
-
-        System.out.println("TESTING: ");
-        //System.out.print(String.format("%02x ", byteIP[0]));
-        System.out.println("TESTING: ");
-        //byte b = Byte.parseByte(n1, 2);
-        //byte b2 = Byte.valueOf(n1, 2);
-
-        /*for(Byte b : qName){
-            if ((b <= ' ') || (b > '~'))
-                System.out.print(String.format("%02x ", b));
-            else
-                System.out.print(String.format("%c  ", b));
-        }*/
-
-        System.out.println();
-        System.out.println();
-
 
         System.out.println("Received: " + data.length + " bytes: ");
         for (int i=0; i < data.length; i++)
@@ -271,7 +219,7 @@ public class dns_server {
         // for example qr, query/response = bit 0
         //boolean qr = ((v >> 15-0) & 1) == 1;
         //System.out.println("qr = " + qr);
-
+/*
         // for example rd, recursion desired = bit 7
         boolean rd = ((v >> 15-7) & 1) == 1;
         System.out.println("rd = " + rd);
@@ -281,20 +229,9 @@ public class dns_server {
         // write v back to the packet buffer
         data[2] = (byte) ((v >> 8) & 0xff);
         data[3] = (byte) (v & 0xff);
-
+*/
     }
 
-    public static byte[] toByteArray(int value) {
-        return new byte[] {
-                (byte)(value >> 56),
-                (byte)(value >> 48),
-                (byte)(value >> 40),
-                (byte)(value >> 32),
-                (byte)(value >> 24),
-                (byte)(value >> 16),
-                (byte)(value >> 8),
-                (byte)value};
-    }
 
     private static void createDnsTable(FileInputStream fs) throws IOException{
 
