@@ -125,7 +125,7 @@ public class dns_server {
         int ARCount = (short) (((data[offset] & 0xFF) << 8) | (data[offset + 1] & 0xFF));
         offset += 2;
 
-        int responseOffset = offset;
+
 
         //Modify QR flag
         int header2 =(data[2] & 0xff) << 8 | (data[3] & 0xff);
@@ -151,23 +151,31 @@ public class dns_server {
         data[2] = (byte) ((header2 >> 8) & 0xff);
         data[3] = (byte) (header2 & 0xff);
 
+        byte[] response = new byte[1024];
+        int responseOffset = 0;
+
         // Extract query name that occurs after 96 bites/12 bytes
         String qNameString = "";
         while(!(String.format("%02x", data[offset])).equals("00")){
 
             // Get length of current word
             int wordLength = data[offset];
+            response[responseOffset] = data[offset];
 
             // If the given length is not the first length, add a '.'
             if(!qNameString.equals("")){
                 qNameString += ".";
-            }
+                response[responseOffset] = data[offset];
 
+            }
+            responseOffset++;
             offset++;
 
             // Read word given its length in byte array
             for(int i = 0; i < wordLength; i++){
                 qNameString += (char) data[offset];
+                response[responseOffset] = data[offset];
+                responseOffset++;
                 offset++;
             }
 
@@ -220,7 +228,6 @@ public class dns_server {
             data[2] = (byte) ((header2 >> 8) & 0xff);
             data[3] = (byte) (header2 & 0xff);
 
-
             // Convert IP Address string to 4 byte IP Address: n1.n2.n3.n4
 
             int n1 = Integer.parseInt(IP.substring(0, IP.indexOf('.')));
@@ -236,16 +243,26 @@ public class dns_server {
 
             //Check query type and query class
             offset += 2;
+            responseOffset+=2;
+
+            response[responseOffset] = data[offset];
             if (data[offset] != 1) {
                 // Problem with query type
                 return null;
             }
+
             offset += 2;
+            responseOffset+=2;
+            response[responseOffset] = data[offset];
+
             if (data[offset] != 1) {
                 // Problem with query class
                 return null;
             }
             offset++;
+            responseOffset++;
+
+            int requestSize = offset+1;
 
             // Begin modifying message to append response
 
@@ -266,22 +283,51 @@ public class dns_server {
 
             // Add ttl here
             offset +=3;
+            responseOffset+=3;
             data[offset] = (byte) 10;
+            response[responseOffset] = (byte) 10;
+            responseOffset++;
             offset ++;
 
             // Add rd length = 4 to response
             data[offset] = (byte) 4;
+            response[responseOffset] = (byte) 4;
+            responseOffset++;
             offset++;
 
             // Add IP address to response
             for (int i = 0; i < 4; i++) {
+                response[responseOffset] = ip[i];
+                responseOffset++;
                 data[offset] = ip[i];
                 offset++;
             }
 
-            byte[] returnArr = Arrays.copyOf(data, offset);
+            byte[] returnArr = new byte[requestSize + response.length];
+            int returnIndex = 0;
 
-            return returnArr;
+            for(int i = 0; i < requestSize; i++){
+                returnArr[returnIndex] = data[i];
+                returnIndex++;
+            }
+
+            for(int i = 0; i < response.length-1; i++){
+                returnArr[returnIndex] = response[i];
+                returnIndex++;
+            }
+
+            //remove zeros at end
+
+            int zeroCount = 0;
+            int index = returnArr.length-1;
+            while(returnArr[index] == (byte) 0){
+                zeroCount++;
+                index--;
+            }
+
+            byte[] returnArr2 = Arrays.copyOf(returnArr, returnArr.length-zeroCount);
+
+            return returnArr2;
 
         }
 
