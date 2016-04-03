@@ -51,11 +51,8 @@ public class dns_server {
 
             socket.receive(receivePacket);
 
-            receivePacket.setData(analyzePacket(receivePacket.getData()));
-            //InetAddress ip = InetAddress.getByAddress(new byte[] {(byte) 95, (byte) 215, (byte) 62, (byte) 5});
 
-           // sentence = new String(receive.getData(), 0, receive.getLength(), "UTF-8");
-            //length = receive.getLength();
+            receivePacket.setData(analyzePacket(receivePacket.getData()));
 
             if (receivePacket.getLength() < 1) {
                 break;
@@ -71,6 +68,7 @@ public class dns_server {
                 else
                     System.out.print(String.format("%c  ", receivePacket.getData()[i]));
             System.out.println("");
+
             socket.send(receivePacket);
 
         }
@@ -124,7 +122,6 @@ public class dns_server {
         offset += 2;
         int ARCount = (short) (((data[offset] & 0xFF) << 8) | (data[offset + 1] & 0xFF));
         offset += 2;
-
 
 
         //Modify QR flag
@@ -211,6 +208,7 @@ public class dns_server {
             return returnArr;
         }
         else {
+
             // If IP not found, modify RCODE with 0
             header2 |= (0 << 15 - 12);
             data[2] = (byte) ((header2 >> 8) & 0xff);
@@ -281,6 +279,7 @@ public class dns_server {
             data[7] = (byte) (ansRecCount & 0xff);
 
 
+
             // Add ttl here
             offset +=3;
             responseOffset+=3;
@@ -289,7 +288,21 @@ public class dns_server {
             responseOffset++;
             offset ++;
 
+            response[responseOffset]=(byte)0;
+            responseOffset++;
+            data[offset] = (byte) 4;
+            response[responseOffset] = (byte) 4;
+            responseOffset++;
+            offset++;
+
+
             // Add rd length = 4 to response
+            data[offset] = (byte) 0;
+            response[responseOffset] = (byte) 0;
+
+            responseOffset++;
+            offset++;
+
             data[offset] = (byte) 4;
             response[responseOffset] = (byte) 4;
             responseOffset++;
@@ -303,10 +316,10 @@ public class dns_server {
                 offset++;
             }
 
-            byte[] returnArr = new byte[requestSize + response.length];
+            byte[] returnArr = new byte[requestSize + response.length+4];
             int returnIndex = 0;
 
-            for(int i = 0; i < requestSize; i++){
+            for(int i = 0; i < requestSize-1; i++){
                 returnArr[returnIndex] = data[i];
                 returnIndex++;
             }
@@ -327,7 +340,14 @@ public class dns_server {
 
             byte[] returnArr2 = Arrays.copyOf(returnArr, returnArr.length-zeroCount);
 
-            return returnArr2;
+            //short[] shorts = new short[returnArr2.length/2];
+
+            ByteBuffer buffer = ByteBuffer.wrap(returnArr2);
+            buffer.order(ByteOrder.LITTLE_ENDIAN);
+
+            byte[] bytes = buffer.array();
+
+            return bytes;
 
         }
 
@@ -377,6 +397,12 @@ public class dns_server {
 
     }
 
+    public static int htonl(int value) {
+        if (ByteOrder.nativeOrder().equals(ByteOrder.BIG_ENDIAN)){
+            return value;
+        }
+        return Integer.reverseBytes(value);
+    }
 
     private static void createDnsTable(FileInputStream fs) throws IOException{
 
