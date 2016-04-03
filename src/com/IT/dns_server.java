@@ -61,6 +61,16 @@ public class dns_server {
                 break;
             }
 
+            System.out.println("Sending: " + receivePacket.getData().length + " bytes: ");
+            for (int i=0; i < receivePacket.getData().length; i++)
+                System.out.print(String.format("%02x ", receivePacket.getData()[i]));
+            System.out.println("");
+            for (int i=0; i < receivePacket.getData().length; i++)
+                if ((receivePacket.getData()[i] <= ' ') || (receivePacket.getData()[i] > '~'))
+                    System.out.print(String.format("%02x ", receivePacket.getData()[i]));
+                else
+                    System.out.print(String.format("%c  ", receivePacket.getData()[i]));
+            System.out.println("");
             socket.send(receivePacket);
 
         }
@@ -114,6 +124,8 @@ public class dns_server {
         offset += 2;
         int ARCount = (short) (((data[offset] & 0xFF) << 8) | (data[offset + 1] & 0xFF));
         offset += 2;
+
+        int responseOffset = offset;
 
         //Modify QR flag
         int header2 =(data[2] & 0xff) << 8 | (data[3] & 0xff);
@@ -185,6 +197,10 @@ public class dns_server {
             header2 |= (1<<15-15);
             data[2] = (byte) ((header2 >> 8) & 0xff);
             data[3] = (byte) (header2 & 0xff);
+
+            byte[] returnArr = Arrays.copyOf(data, offset);
+
+            return returnArr;
         }
         else {
             // If IP not found, modify RCODE with 0
@@ -235,6 +251,12 @@ public class dns_server {
 
             // Add 1 to Answer Record Count
 
+            //offset = responseOffset;
+
+            int qRecCount = (data[4] & 0xff) << 8 | (data[5] & 0xff);
+            qRecCount |= (0 << 15 - 15);
+            data[4] = (byte) ((qRecCount >> 8) & 0xff);
+            data[5] = (byte) (qRecCount & 0xff);
 
             int ansRecCount = (data[6] & 0xff) << 8 | (data[7] & 0xff);
             ansRecCount |= (1 << 15 - 15);
@@ -243,8 +265,9 @@ public class dns_server {
 
 
             // Add ttl here
+            offset +=3;
             data[offset] = (byte) 10;
-            offset += 4;
+            offset ++;
 
             // Add rd length = 4 to response
             data[offset] = (byte) 4;
@@ -257,17 +280,6 @@ public class dns_server {
             }
 
             byte[] returnArr = Arrays.copyOf(data, offset);
-
-            System.out.println("Sending: " + returnArr.length + " bytes: ");
-            for (int i=0; i < returnArr.length; i++)
-                System.out.print(String.format("%02x ", returnArr[i]));
-            System.out.println("");
-            for (int i=0; i < returnArr.length; i++)
-                if ((returnArr[i] <= ' ') || (returnArr[i] > '~'))
-                    System.out.print(String.format("%02x ", returnArr[i]));
-                else
-                    System.out.print(String.format("%c  ", returnArr[i]));
-            System.out.println("");
 
             return returnArr;
 
@@ -316,7 +328,7 @@ public class dns_server {
         data[2] = (byte) ((v >> 8) & 0xff);
         data[3] = (byte) (v & 0xff);
 */
-        return null;
+
     }
 
 
