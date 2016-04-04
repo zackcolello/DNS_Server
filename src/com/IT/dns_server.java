@@ -126,7 +126,7 @@ public class dns_server {
 
         //Modify QR flag
         int header2 =(data[2] & 0xff) << 8 | (data[3] & 0xff);
-        header2 |= (1<<15-0);
+        header2 |= (1<<(15-0));
         data[2] = (byte) ((header2 >> 8) & 0xff);
         data[3] = (byte) (header2 & 0xff);
 
@@ -296,23 +296,11 @@ public class dns_server {
             offset++;
 
 
-            // Add rd length = 4 to response
-            data[offset] = (byte) 0;
-            response[responseOffset] = (byte) 0;
-
-            responseOffset++;
-            offset++;
-
-            data[offset] = (byte) 4;
-            response[responseOffset] = (byte) 4;
-            responseOffset++;
-            offset++;
-
             // Add IP address to response
             for (int i = 0; i < 4; i++) {
                 response[responseOffset] = ip[i];
                 responseOffset++;
-                data[offset] = ip[i];
+                //data[offset] = ip[i];
                 offset++;
             }
 
@@ -342,12 +330,9 @@ public class dns_server {
 
             //short[] shorts = new short[returnArr2.length/2];
 
-            ByteBuffer buffer = ByteBuffer.wrap(returnArr2);
-            buffer.order(ByteOrder.LITTLE_ENDIAN);
 
-            byte[] bytes = buffer.array();
 
-            return bytes;
+            return returnArr2;
 
         }
 
