@@ -94,6 +94,9 @@ public class dns_server {
         int ARCount = (short) (((data[offset] & 0xFF) << 8) | (data[offset + 1] & 0xFF));
         offset += 2;
 
+        byte[] returnArr= new byte[2048];
+        if(QR==0 && opcode==0)
+        {
 
         //Modify QR flag
         int header2 =(data[2] & 0xff) << 8 | (data[3] & 0xff);
@@ -174,7 +177,7 @@ public class dns_server {
             data[2] = (byte) ((header2 >> 8) & 0xff);
             data[3] = (byte) (header2 & 0xff);
 
-            byte[] returnArr = Arrays.copyOf(data, offset);
+            returnArr = Arrays.copyOf(data, offset);
 
             return returnArr;
         }
@@ -213,7 +216,7 @@ public class dns_server {
 
             //Check query type and query class
             offset += 2;
-            responseOffset+=2;
+            responseOffset += 2;
 
             response[responseOffset] = data[offset];
             if (data[offset] != 1) {
@@ -222,7 +225,7 @@ public class dns_server {
             }
 
             offset += 2;
-            responseOffset+=2;
+            responseOffset += 2;
             response[responseOffset] = data[offset];
 
             if (data[offset] != 1) {
@@ -232,7 +235,7 @@ public class dns_server {
             offset++;
             responseOffset++;
 
-            int requestSize = offset+1;
+            int requestSize = offset + 1;
 
             // Begin modifying message to append response
             // Add 1 to Answer Record Count
@@ -248,14 +251,14 @@ public class dns_server {
             data[7] = (byte) (ansRecCount & 0xff);
 
             // Add ttl here
-            offset +=3;
-            responseOffset+=3;
+            offset += 3;
+            responseOffset += 3;
             data[offset] = (byte) 10;
             response[responseOffset] = (byte) 10;
             responseOffset++;
-            offset ++;
+            offset++;
 
-            response[responseOffset]=(byte)0;
+            response[responseOffset] = (byte) 0;
             responseOffset++;
             data[offset] = (byte) 4;
             response[responseOffset] = (byte) 4;
@@ -272,15 +275,15 @@ public class dns_server {
 
             // Copy byte arrays to create the final return array
 
-            byte[] returnArr = new byte[requestSize + response.length+4];
+            returnArr = new byte[requestSize + response.length + 4];
             int returnIndex = 0;
 
-            for(int i = 0; i < requestSize-1; i++){
+            for (int i = 0; i < requestSize - 1; i++) {
                 returnArr[returnIndex] = data[i];
                 returnIndex++;
             }
 
-            for(int i = 0; i < response.length-1; i++){
+            for (int i = 0; i < response.length - 1; i++) {
                 returnArr[returnIndex] = response[i];
                 returnIndex++;
             }
@@ -288,18 +291,46 @@ public class dns_server {
             // Remove zeros at end
 
             int zeroCount = 0;
-            int index = returnArr.length-1;
-            while(returnArr[index] == (byte) 0){
+            int index = returnArr.length - 1;
+            while (returnArr[index] == (byte) 0) {
                 zeroCount++;
                 index--;
             }
 
-            byte[] returnArr2 = Arrays.copyOf(returnArr, returnArr.length-zeroCount);
+            byte[] returnArr2 = Arrays.copyOf(returnArr, returnArr.length - zeroCount);
 
             return returnArr2;
-
         }
+        }
+        else if(QR!=0 || opcode!=0)
+        {
+            //Modify QR flag
+            int header2 =(data[2] & 0xff) << 8 | (data[3] & 0xff);
+            header2 |= (1<<(15-0));
+            data[2] = (byte) ((header2 >> 8) & 0xff);
+            data[3] = (byte) (header2 & 0xff);
 
+            header2 |= (0<<15-12);
+            data[2] = (byte) ((header2 >> 8) & 0xff);
+            data[3] = (byte) (header2 & 0xff);
+
+            header2 |= (1<<15-13);
+            data[2] = (byte) ((header2 >> 8) & 0xff);
+            data[3] = (byte) (header2 & 0xff);
+
+            header2 |= (0<<15-14);
+            data[2] = (byte) ((header2 >> 8) & 0xff);
+            data[3] = (byte) (header2 & 0xff);
+
+            header2 |= (0<<15-15);
+            data[2] = (byte) ((header2 >> 8) & 0xff);
+            data[3] = (byte) (header2 & 0xff);
+
+            returnArr = Arrays.copyOf(data, offset);
+
+            return returnArr;
+        }
+        return returnArr;
     }
 
     private static void createDnsTable(FileInputStream fs) throws IOException{
