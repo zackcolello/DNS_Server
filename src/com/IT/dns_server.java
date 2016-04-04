@@ -35,7 +35,6 @@ public class dns_server {
             System.exit(-1);
         }
 
-
         // Create DNS Table Hash Map
         createDnsTable(fs);
 
@@ -44,54 +43,26 @@ public class dns_server {
         DatagramSocket socket = new DatagramSocket(portNumber);
         DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
 
-        /*String sentence;
-        int length;
-        ByteBuffer b;*/
         while(true) {
 
+            receivePacket.setData(new byte[1024]);
             socket.receive(receivePacket);
-
 
             receivePacket.setData(analyzePacket(receivePacket.getData()));
 
             if (receivePacket.getLength() < 1) {
+
                 break;
             }
-
-            System.out.println("Sending: " + receivePacket.getData().length + " bytes: ");
-            for (int i=0; i < receivePacket.getData().length; i++)
-                System.out.print(String.format("%02x ", receivePacket.getData()[i]));
-            System.out.println("");
-            for (int i=0; i < receivePacket.getData().length; i++)
-                if ((receivePacket.getData()[i] <= ' ') || (receivePacket.getData()[i] > '~'))
-                    System.out.print(String.format("%02x ", receivePacket.getData()[i]));
-                else
-                    System.out.print(String.format("%c  ", receivePacket.getData()[i]));
-            System.out.println("");
 
             socket.send(receivePacket);
 
         }
 
-        //System.out.println(sentence.trim());
-        //System.out.println("size: " + length);
-
-
         socket.close();
     }
 
     private static byte[] analyzePacket(byte[] data){
-
-        System.out.println("Received: " + data.length + " bytes: ");
-        for (int i=0; i < data.length; i++)
-            System.out.print(String.format("%02x ", data[i]));
-        System.out.println("");
-        for (int i=0; i < data.length; i++)
-            if ((data[i] <= ' ') || (data[i] > '~'))
-                System.out.print(String.format("%02x ", data[i]));
-            else
-                System.out.print(String.format("%c  ", data[i]));
-        System.out.println("");
 
         int offset = 0;
 
@@ -181,7 +152,7 @@ public class dns_server {
         //Find IP address in dns Table
         String IP = dnsTable.get(qNameString);
 
-        //Modify RC flag: 0 for no error, 3 for name error (dm does not exist)
+        // Modify RC flag: 0 for no error, 3 for name error (dm does not exist)
 
         // Verify that IP is in the list of host files
         if(IP == null){
@@ -210,6 +181,7 @@ public class dns_server {
         else {
 
             // If IP not found, modify RCODE with 0
+
             header2 |= (0 << 15 - 12);
             data[2] = (byte) ((header2 >> 8) & 0xff);
             data[3] = (byte) (header2 & 0xff);
@@ -263,10 +235,7 @@ public class dns_server {
             int requestSize = offset+1;
 
             // Begin modifying message to append response
-
             // Add 1 to Answer Record Count
-
-            //offset = responseOffset;
 
             int qRecCount = (data[4] & 0xff) << 8 | (data[5] & 0xff);
             qRecCount |= (0 << 15 - 15);
@@ -277,8 +246,6 @@ public class dns_server {
             ansRecCount |= (1 << 15 - 15);
             data[6] = (byte) ((ansRecCount >> 8) & 0xff);
             data[7] = (byte) (ansRecCount & 0xff);
-
-
 
             // Add ttl here
             offset +=3;
@@ -295,7 +262,6 @@ public class dns_server {
             responseOffset++;
             offset++;
 
-
             // Add IP address to response
             for (int i = 0; i < 4; i++) {
                 response[responseOffset] = ip[i];
@@ -303,6 +269,8 @@ public class dns_server {
                 //data[offset] = ip[i];
                 offset++;
             }
+
+            // Copy byte arrays to create the final return array
 
             byte[] returnArr = new byte[requestSize + response.length+4];
             int returnIndex = 0;
@@ -317,7 +285,7 @@ public class dns_server {
                 returnIndex++;
             }
 
-            //remove zeros at end
+            // Remove zeros at end
 
             int zeroCount = 0;
             int index = returnArr.length-1;
@@ -328,65 +296,10 @@ public class dns_server {
 
             byte[] returnArr2 = Arrays.copyOf(returnArr, returnArr.length-zeroCount);
 
-            //short[] shorts = new short[returnArr2.length/2];
-
-
-
             return returnArr2;
 
         }
 
-        // look at the bytes as big endian shorts
-        // the wrap() method uses an existing byte array for the buffer
-
-        //short[] shorts = new short[data.length/2];
-        //ByteBuffer.wrap(data).order(ByteOrder.BIG_ENDIAN).asShortBuffer().get(shorts);
-
-        // dump our buffer as shorts
-        //for (int i=0; i < data.length/2; i++)
-            //System.out.println("short[" + i + "] = " + shorts[i]);
-
-        // another way we can create shorts is by manually putting 2 bytes together
-        // internet format is big endian - the first byte has the more significant value
-        // this one produces an unsigned result
-
-        //int short_value = ((data[0] & 0xff) << 8) + (data[1] & 0xff);
-        //System.out.println("first 16 bits = " + short_value);
-
-
-        // demo of extracting bit fields (e.g., for dns)
-        // grab the second group of two bytes and treat it as a 16 bit set of bits
-        // bits are indexed left to right
-
-
-        /*int v = (data[2] & 0xff) << 8 | (data[3] & 0xff);
-        for (int i=0; i < 16; i++) {
-            System.out.println("bit[" + i + "] = " + (v>>(15-i) & 1));
-            // System.out.println("bit[" + i + "] = " + (v & 1<<(15-i)));
-        }*/
-
-        // for example qr, query/response = bit 0
-        //boolean qr = ((v >> 15-0) & 1) == 1;
-        //System.out.println("qr = " + qr);
-/*
-        // for example rd, recursion desired = bit 7
-        boolean rd = ((v >> 15-7) & 1) == 1;
-        System.out.println("rd = " + rd);
-
-        // example of setting a bit. Let's set qr to 1
-        v |= (1<<(15-0));
-        // write v back to the packet buffer
-        data[2] = (byte) ((v >> 8) & 0xff);
-        data[3] = (byte) (v & 0xff);
-*/
-
-    }
-
-    public static int htonl(int value) {
-        if (ByteOrder.nativeOrder().equals(ByteOrder.BIG_ENDIAN)){
-            return value;
-        }
-        return Integer.reverseBytes(value);
     }
 
     private static void createDnsTable(FileInputStream fs) throws IOException{
